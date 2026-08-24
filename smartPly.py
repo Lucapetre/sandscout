@@ -252,6 +252,7 @@ def p_object(p):
     '''object : otherType TK_FILTER
               | regexFilter
               | otherType otherType
+              | otherType TK_BOOL
               | otherType otherType TK_FILTER
               | subpath
               | TK_REQNOT TK_LPAREN object TK_RPAREN
