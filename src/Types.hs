@@ -20,7 +20,7 @@ data Filter
   = Subpath Text
   | Literal Text
   | Regex Text
-  | RequireEntitlement Text [FilterValue]
+  | RequireEntitlement Text [Filter]
   | RequireAll [Filter]
   | RequireAny [Filter]
   | RequireNot Filter
@@ -57,3 +57,4 @@ data FlatRule = FlatRule
   , flatAction   :: Text
   , flatFilters  :: [FlatFilter]
   } deriving (Show, Eq)
+  

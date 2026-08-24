@@ -8,7 +8,6 @@ module Parser( parseSandboxProfile
 
 import Types
 
-import Control.Applicative (empty, (<|>))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
@@ -57,8 +56,6 @@ boolP :: Parser Bool
 boolP = lexeme $
       (string "#t" >> return True)
   <|> (string "#f" >> return False)
-  <|> (string "true" >> return True)
-  <|> (string "false" >> return False)
 
 decisionP :: Parser Decision
 decisionP = (symbol "allow" >> return Allow)
@@ -92,11 +89,18 @@ literalP = do
 
 regexP :: Parser Filter
 regexP = do
-  _ <- symbol "regex" <|> symbol "regex*"
-  pats <- some (regexPatternP <|> quotedStringP)
+  _ <- symbol "regex"
+  pats <- some regexPatternP
   case map Regex pats of
     [s] -> return s
     multiple -> return $ RequireAny multiple
+
+requireEntitlementP :: Parser Filter
+requireEntitlementP = do
+  _ <- symbol "require-entitlement"
+  name <- quotedStringP
+  vals <- many filterP
+  return $ RequireEntitlement name vals
 
 filterP :: Parser Filter
 filterP = parens $
@@ -106,8 +110,8 @@ filterP = parens $
   <|> (symbol "require-all" >> RequireAll <$> many filterP)
   <|> (symbol "require-any" >> RequireAny <$> many filterP)
   <|> (symbol "require-not" >> RequireNot <$> filterP)
+  <|> requireEntitlementP
   <|> (symbol "debug-mode" >> return DebugMode)
-  <|> (BooleanConst <$> boolP)
   <|> do
         name <- identifierP
         args <- many filterValueP

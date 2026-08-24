@@ -78,4 +78,5 @@ executable sandscout
                       src
 
     -- Base language which the package is written in.
-    default-language: GHC2021
+    default-language: GHC2024
+    
