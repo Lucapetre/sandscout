@@ -12,8 +12,7 @@ data FilterValue
   | RegexVal Text
   | BoolVal Bool
   | NumberVal Integer
-  | FilterVal Filter
-  | ListVal [FilterValue]
+  | GenericVal Text [FilterValue]
   deriving (Show, Eq)
 
 data Filter
@@ -41,12 +40,20 @@ data SandboxProfile = SandboxProfile
   , profileRules    :: [Rule]
   } deriving (Show, Eq)
 
+data FlatFilterValue
+  = FlatStringVal Text
+  | FlatRegexVal Text
+  | FlatBoolVal Bool
+  | FlatNumberVal Integer
+  | FlatFilterArg Text [FlatFilterValue]
+  deriving (Show, Eq)
+
 data FlatFilter
   = FlatSubpath Text
   | FlatLiteral Text
   | FlatRegex Text
-  | FlatEntitlement Text [FilterValue]
-  | FlatGeneric Text [FilterValue]
+  | FlatEntitlement Text [FlatFilter]
+  | FlatGeneric Text [FlatFilterValue]
   | FlatDebugMode
   | FlatRequireNot FlatFilter
   | FlatRaw Text
