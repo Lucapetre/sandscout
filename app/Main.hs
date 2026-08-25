@@ -1,11 +1,11 @@
-module Main (main) where
+module Main where
 
-import Parser
+import Parser (parseSandboxProfile)
+import PrologEmitter (emitProlog)
 import qualified Data.Text.IO as TIO
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import Text.Megaparsec (errorBundlePretty)
-import PrologEmitter (emitProlog)
 
 main :: IO ()
 main = do
@@ -17,11 +17,8 @@ main = do
         Left err -> do
           putStrLn (errorBundlePretty err)
           exitFailure
-        Right profile -> do
-          putStrLn "=== Original Profile ==="
-          print profile
-          putStrLn "\n=== Flattened Rules (Prolog) ==="
-          TIO.putStrLn (emitProlog profile)
+        Right profile ->
+          TIO.putStr (emitProlog profile)
     _ -> do
-      putStrLn "Usage: sandscout <file.sb>"
+      putStrLn "Usage: sandscout <path-to-sb-profile>"
       exitFailure
