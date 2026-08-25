@@ -66,12 +66,12 @@ filterValueP = (RegexVal <$> regexPatternP)
            <|> (StringVal <$> quotedStringP)
            <|> (BoolVal <$> try boolP)
            <|> (NumberVal <$> try numberP)
-           <|> try genericValP 
-           <|> (StringVal <$> identifierP)
+           <|> try genericValP
+           <|> (AtomVal <$> identifierP)
   where genericValP = parens $ do
-                 name <- identifierP
-                 args <- many filterValueP
-                 return $ GenericVal name args
+          name <- identifierP
+          args <- many filterValueP
+          return $ GenericVal name args
 
 subpathP :: Parser Filter
 subpathP = do

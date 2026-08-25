@@ -12,6 +12,7 @@ data FilterValue
   | RegexVal Text
   | BoolVal Bool
   | NumberVal Integer
+  | AtomVal Text
   | GenericVal Text [FilterValue]
   deriving (Show, Eq)
 
@@ -45,6 +46,7 @@ data FlatFilterValue
   | FlatRegexVal Text
   | FlatBoolVal Bool
   | FlatNumberVal Integer
+  | FlatAtomVal Text
   | FlatFilterArg Text [FlatFilterValue]
   deriving (Show, Eq)
 
@@ -64,4 +66,3 @@ data FlatRule = FlatRule
   , flatAction   :: Text
   , flatFilters  :: [FlatFilter]
   } deriving (Show, Eq)
-  
