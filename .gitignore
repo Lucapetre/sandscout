@@ -23,3 +23,7 @@ TAGS
 
 # build files
 /dist-newstyle
+
+*.hi
+*.o
+my_query*.out

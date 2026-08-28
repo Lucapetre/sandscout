@@ -64,7 +64,8 @@ executable sandscout
     -- Modules included in this executable, other than Main.
     other-modules:    Types,
                       Parser,
-                      PrologEmitter
+                      PrologEmitter,
+                      Analyze
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -87,7 +88,8 @@ test-suite sandscout-test
     main-is:          Spec.hs
     other-modules:    Types,
                       Parser,
-                      PrologEmitter
+                      PrologEmitter,
+                      Analyze
     hs-source-dirs:   test,
                       src
     build-depends:    base >= 4.7 && < 5,
