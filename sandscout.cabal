@@ -65,7 +65,8 @@ executable sandscout
     other-modules:    Types,
                       Parser,
                       PrologEmitter,
-                      Analyze
+                      Analyze,
+                      Render
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -89,7 +90,8 @@ test-suite sandscout-test
     other-modules:    Types,
                       Parser,
                       PrologEmitter,
-                      Analyze
+                      Analyze,
+                      Render
     hs-source-dirs:   test,
                       src
     build-depends:    base >= 4.7 && < 5,

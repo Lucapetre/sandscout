@@ -14,6 +14,7 @@ module Analyze
 
 import Types
 import PrologEmitter (flattenRule)
+import Render (renderFlatFilterUnquoted)
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -84,46 +85,8 @@ pathAccess (FlatSubpath target) (FlatSubpath parent) = parent `T.isPrefixOf` tar
 pathAccess (FlatLiteral _) (FlatRegex _)             = True
 pathAccess _ _                                       = False
 
-formatFlatFilterValue :: FlatFilterValue -> Text
-formatFlatFilterValue fv = case fv of
-  FlatStringVal s -> s
-  FlatRegexVal r  ->
-    let fixed = T.replace "\\." "[.]" r
-    in if T.isSuffixOf "$" fixed || T.isSuffixOf "/" fixed
-       then fixed <> " / i"
-       else fixed <> "/i"
-  FlatBoolVal b   -> if b then "#t" else "#f"
-  FlatNumberVal n -> T.pack (show n)
-  FlatAtomVal a   -> T.toLower a
-  FlatFilterArg name args ->
-    T.toLower name <> "(" <> T.intercalate "," (map formatFlatFilterValue args) <> ")"
-
-formatFlatFilter :: FlatFilter -> Text
-formatFlatFilter ff = case ff of
-  FlatSubpath path ->
-    "subpath(" <> path <> ")"
-  FlatLiteral path ->
-    "literal(" <> path <> ")"
-  FlatRegex pat ->
-    let fixed = T.replace "\\." "[.]" pat
-    in if T.isSuffixOf "$" fixed || T.isSuffixOf "/" fixed
-       then "regex(" <> fixed <> " / i)"
-       else "regex(" <> fixed <> "/i)"
-  FlatEntitlement name [] ->
-    "require-entitlement(" <> name <> ")"
-  FlatEntitlement name vals ->
-    "require-entitlement(" <> name <> ",[" <> T.intercalate "," (map formatFlatFilter vals) <> "])"
-  FlatGeneric name args ->
-    name <> "(" <> T.intercalate "," (map formatFlatFilterValue args) <> ")"
-  FlatDebugMode ->
-    "debug-mode"
-  FlatRequireNot inner ->
-    "require-not(" <> formatFlatFilter inner <> ")"
-  FlatRaw raw ->
-    raw
-
 formatFiltersList :: [FlatFilter] -> Text
-formatFiltersList filters = "[" <> T.intercalate "," (map formatFlatFilter filters) <> "]"
+formatFiltersList filters = "[" <> T.intercalate "," (map renderFlatFilterUnquoted filters) <> "]"
 
 runQuery1 :: [FlatRule] -> [FlatRule]
 runQuery1 rules =
