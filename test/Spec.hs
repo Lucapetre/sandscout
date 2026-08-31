@@ -4,6 +4,8 @@ module Main (main) where
 
 import Parser (parseSandboxProfile)
 import PrologEmitter (emitProlog)
+import Analyze
+import Types (FlatRule)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -47,11 +49,41 @@ mkGoldenTest dir baseName = do
           (normalise plExpected)
           (normalise actual)
 
+-- | Build a query test: parse the .sb input, run the query, format
+-- each result, and compare against the expected .out file.
+mkQueryTest :: String -> FilePath -> FilePath -> (a -> T.Text) -> ([FlatRule] -> [a]) -> IO TestTree
+mkQueryTest label sbPath outPath formatter query = do
+  return $ testCase label $ do
+    sbContent <- TIO.readFile sbPath
+    outExpected <- TIO.readFile outPath
+    case parseSandboxProfile sbPath sbContent of
+      Left err ->
+        assertFailure $ "Failed to parse " ++ sbPath ++ ":\n" ++ errorBundlePretty err
+      Right profile -> do
+        let rules  = extractFlatRules profile
+            actual = T.unlines $ map formatter (query rules)
+        assertEqual
+          ("Query output mismatch for " ++ label)
+          (normalise outExpected)
+          (normalise actual)
+
 -- | Normalise text for comparison: trim, then sort so that line ordering differences do not cause failures.
 normalise :: T.Text -> [T.Text]
 normalise = sort . filter (not . T.null) . map T.stripEnd . T.lines
 
 main :: IO ()
 main = do
-  tests <- discoverTestCases "test-cases"
-  defaultMain $ testGroup "Tests (parse .sb -> emit .pl)" tests
+  emitTests <- discoverTestCases "test-cases"
+
+  let sbFile = "test-cases" </> "containerBetterGraphProcess.sb"
+      outDir = "outputFromQueries"
+
+  q1 <- mkQueryTest "query1" sbFile (outDir </> "query1.out") formatQuery1 runQuery1
+  q2 <- mkQueryTest "query2" sbFile (outDir </> "query2.out") formatQuery2 runQuery2
+  q4 <- mkQueryTest "query4" sbFile (outDir </> "query4.out") formatQuery4 runQuery4
+
+  defaultMain $ testGroup "Sandscout"
+    [ testGroup "Prolog emission (parse .sb -> emit .pl)" emitTests
+    , testGroup "Query output (containerBetterGraphProcess)" [q1, q2, q4]
+    ]
+
