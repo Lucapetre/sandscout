@@ -3,9 +3,10 @@ module Main where
 import Parser (parseSandboxProfile)
 import PrologEmitter (emitProlog)
 import Analyze
-import Types (SandboxProfile(..))
+import Types (SandboxProfile(..), FlatRule)
 
 import qualified Data.Text.IO as TIO
+import qualified Data.Text as T
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import Text.Megaparsec (errorBundlePretty)
@@ -13,24 +14,27 @@ import Text.Megaparsec (errorBundlePretty)
 data Mode
   = ModeAST
   | ModePrologFacts
-  | ModeQuery
+  | ModeQuery (Maybe Int)
   deriving (Eq, Show)
 
 parseArgs :: [String] -> Either String (Mode, FilePath)
-parseArgs ["--ast", fp]          = Right (ModeAST, fp)
-parseArgs ["--prolog-facts", fp] = Right (ModePrologFacts, fp)
-parseArgs ["--query", fp]        = Right (ModeQuery, fp)
-parseArgs [fp]                   = Right (ModeQuery, fp)
-parseArgs _                      = Left usage
+parseArgs ["--ast", fp]            = Right (ModeAST, fp)
+parseArgs ["--prolog-facts", fp]   = Right (ModePrologFacts, fp)
+parseArgs ["--query", fp]          = Right (ModeQuery Nothing, fp)
+parseArgs ["--query", n, fp]       = case reads n of
+  [(num, "")] | num >= 1 && num <= 4 -> Right (ModeQuery (Just num), fp)
+  _ -> Left $ "Invalid query number: " ++ n ++ " (must be 1-4)"
+parseArgs [fp]                     = Right (ModeQuery Nothing, fp)
+parseArgs _                        = Left usage
   where
-
     usage = unlines
       [ "Usage: sandscout [MODE] <path-to-sb-profile>"
       , ""
       , "Modes:"
-      , "  --ast            Print the parsed sandbox profile AST"
-      , "  --prolog-facts   Output all flattened allow/deny Prolog facts"
-      , "  --query          Run analysis queries and print results (default)"
+      , "  --ast              Print the parsed sandbox profile AST"
+      , "  --prolog-facts     Output all flattened allow/deny Prolog facts"
+      , "  --query [1-4]      Run analysis queries and print results (default)"
+      , "                     Omit number to run all queries"
       ]
 
 main :: IO ()
@@ -50,26 +54,28 @@ main = do
           runMode mode profile
 
 runMode :: Mode -> SandboxProfile -> IO ()
-runMode ModeAST profile = do
+runMode ModeAST profile =
   mapM_ print (profileRules profile)
 
-runMode ModePrologFacts profile = do
+runMode ModePrologFacts profile =
   TIO.putStr (emitProlog profile)
 
-runMode ModeQuery profile = do
+runMode (ModeQuery sel) profile = do
   let rules = extractFlatRules profile
+      runQ :: String -> (a -> T.Text) -> ([FlatRule] -> [a]) -> IO ()
+      runQ header formatter query = do
+        putStrLn $ "=== " ++ header ++ " ==="
+        mapM_ (TIO.putStrLn . formatter) (query rules)
+        putStrLn ""
 
-  putStrLn "=== Query 1: file-write* without container (third-party caps only) ==="
-  mapM_ (TIO.putStrLn . formatQuery1) (runQuery1 rules)
-  putStrLn ""
+      q1 = runQ "Query 1: file-write* without container (third-party caps only)" formatQuery1 runQuery1
+      q2 = runQ "Query 2: file-read* without container or capabilities"          formatQuery2 runQuery2
+      q3 = runQ "Query 3: overlapping read/write without container or capabilities" formatQuery3 runQuery3
+      q4 = runQ "Query 4: mobile-path reads without container or capabilities"    formatQuery4 runQuery4
 
-  putStrLn "=== Query 2: file-read* without container or capabilities ==="
-  mapM_ (TIO.putStrLn . formatQuery2) (runQuery2 rules)
-  putStrLn ""
-
-  putStrLn "=== Query 3: overlapping read/write without container or capabilities ==="
-  mapM_ (TIO.putStrLn . formatQuery3) (runQuery3 rules)
-  putStrLn ""
-
-  putStrLn "=== Query 4: mobile-path reads without container or capabilities ==="
-  mapM_ (TIO.putStrLn . formatQuery4) (runQuery4 rules)
+  case sel of
+    Just 1 -> q1
+    Just 2 -> q2
+    Just 3 -> q3
+    Just 4 -> q4
+    _      -> q1 >> q2 >> q3 >> q4
