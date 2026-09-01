@@ -2,35 +2,72 @@ name: CI
 
 on:
   push:
-    branches: [ master, main, ahmad, luca/add-main ]
+    branches: [master]
+    tags: ["v*"]
   pull_request:
-    branches: [ master, main ]
+    branches: [master]
+
+permissions:
+  contents: write
 
 jobs:
   build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up GHC and Cabal
-      uses: haskell-actions/setup@v2
-      with:
-        ghc-version: '9.10.3'
-        cabal-version: 'latest'
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.12"
+          cabal-version: "latest"
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cabal/store
-          dist-newstyle
-        key: ${{ runner.os }}-cabal-${{ hashFiles('**/*.cabal') }}
-        restore-keys: |
-          ${{ runner.os }}-cabal-
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.cabal/store
+          key: ${{ runner.os }}-cabal-${{ hashFiles('sandscout.cabal') }}
+          restore-keys: ${{ runner.os }}-cabal-
 
-    - name: Build project
-      run: cabal build all
+      - name: Build dependencies
+        run: cabal build --only-dependencies --enable-tests
 
-    - name: Run test suite
-      run: cabal test all
+      - name: Build
+        run: cabal build --enable-tests
+
+      - name: Run tests
+        run: cabal test --test-show-details=direct
+
+      - name: Build release binary
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cabal install --install-method=copy --installdir=./dist
+          strip ./dist/sandscout
+          tar czf sandscout-linux-x86_64.tar.gz -C ./dist sandscout
+
+      - name: Upload binary artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: sandscout-linux-x86_64
+          path: sandscout-linux-x86_64.tar.gz
+
+  release:
+    name: Publish Release
+    needs: build-and-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sandscout-linux-x86_64
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: sandscout-linux-x86_64.tar.gz
