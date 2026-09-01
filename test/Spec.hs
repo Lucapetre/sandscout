@@ -86,3 +86,4 @@ main = do
     [ testGroup "Prolog emission (parse .sb -> emit .pl)" emitTests
     , testGroup "Query output (containerBetterGraphProcess)" [q1, q2, q4]
     ]
+
