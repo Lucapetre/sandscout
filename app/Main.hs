@@ -13,13 +13,30 @@ import System.Exit (exitFailure)
 import Text.Megaparsec (errorBundlePretty)
 
 data Mode
-  = ModeAST
+  = ModeHelp
+  | ModeAST
   | ModePrologFacts
   | ModeQuery (Maybe Int)
   | ModeJson (Maybe Int)
   deriving (Eq, Show)
 
+usage :: String
+usage = unlines
+  [ "Usage: sandscout [MODE] <path-to-sb-profile>"
+  , ""
+  , "Modes:"
+  , "  --ast              Print the parsed sandbox profile AST"
+  , "  --prolog-facts     Output all flattened allow/deny Prolog facts"
+  , "  --query [1-4]      Run analysis queries and print results (default)"
+  , "  --json  [1-4]      Output query results as JSON"
+  , "                     Omit number to run all queries"
+  , ""
+  , "  -h, --help         Show this help message"
+  ]
+
 parseArgs :: [String] -> Either String (Mode, FilePath)
+parseArgs ["--help"]               = Right (ModeHelp, "")
+parseArgs ["-h"]                   = Right (ModeHelp, "")
 parseArgs ["--ast", fp]            = Right (ModeAST, fp)
 parseArgs ["--prolog-facts", fp]   = Right (ModePrologFacts, fp)
 parseArgs ["--query", fp]          = Right (ModeQuery Nothing, fp)
@@ -28,17 +45,6 @@ parseArgs ["--json", fp]           = Right (ModeJson Nothing, fp)
 parseArgs ["--json", n, fp]        = parseQueryNum ModeJson n fp
 parseArgs [fp]                     = Right (ModeQuery Nothing, fp)
 parseArgs _                        = Left usage
-  where
-    usage = unlines
-      [ "Usage: sandscout [MODE] <path-to-sb-profile>"
-      , ""
-      , "Modes:"
-      , "  --ast              Print the parsed sandbox profile AST"
-      , "  --prolog-facts     Output all flattened allow/deny Prolog facts"
-      , "  --query [1-4]      Run analysis queries and print results (default)"
-      , "  --json  [1-4]      Output query results as JSON"
-      , "                     Omit number to run all queries"
-      ]
 
 parseQueryNum :: (Maybe Int -> Mode) -> String -> FilePath -> Either String (Mode, FilePath)
 parseQueryNum mode n fp = case reads n of
@@ -52,6 +58,8 @@ main = do
     Left msg -> do
       putStrLn msg
       exitFailure
+    Right (ModeHelp, _) ->
+      putStr usage
     Right (mode, filePath) -> do
       content <- TIO.readFile filePath
       case parseSandboxProfile filePath content of
@@ -90,3 +98,6 @@ runMode (ModeQuery sel) profile = do
 
 runMode (ModeJson sel) profile =
   TIO.putStrLn (emitJson sel profile)
+
+runMode ModeHelp _ =
+  putStr usage
