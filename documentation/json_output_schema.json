@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sandscout Query Results",
+  "description": "Output of sandscout --json: an array of query results, each containing its findings.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/QueryResult"
+  },
+
+  "$defs": {
+    "QueryResult": {
+      "type": "object",
+      "required": ["query", "description", "findings"],
+      "properties": {
+        "query": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "The query number (1-4)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of what this query detects."
+        },
+        "findings": {
+          "type": "array",
+          "description": "List of vulnerability findings for this query.",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          }
+        }
+      }
+    },
+
+    "Finding": {
+      "description": "A single vulnerability finding. Queries 1, 2, 4 produce a single rule; query 3 produces a read/write pair.",
+      "oneOf": [
+        { "$ref": "#/$defs/SingleRuleFinding" },
+        { "$ref": "#/$defs/PairedRuleFinding" }
+      ]
+    },
+
+    "SingleRuleFinding": {
+      "type": "object",
+      "description": "A finding based on a single sandbox rule (queries 1, 2, 4).",
+      "required": ["operation", "filters"],
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "type": "string",
+          "description": "The sandbox operation (e.g. 'file-readSTAR', 'file-writeSTAR', 'file-read-metadata')."
+        },
+        "filters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Filter" },
+          "description": "The filter conditions attached to this rule."
+        }
+      }
+    },
+
+    "PairedRuleFinding": {
+      "type": "object",
+      "description": "A finding based on an overlapping read/write rule pair (query 3).",
+      "required": ["read_rule", "write_rule"],
+      "additionalProperties": false,
+      "properties": {
+        "read_rule": {
+          "$ref": "#/$defs/SingleRuleFinding",
+          "description": "The read-side rule."
+        },
+        "write_rule": {
+          "$ref": "#/$defs/SingleRuleFinding",
+          "description": "The write-side rule with overlapping path access."
+        }
+      }
+    },
+
+    "Filter": {
+      "type": "object",
+      "required": ["type"],
+      "description": "A sandbox filter condition.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "subpath",
+            "literal",
+            "regex",
+            "require-not",
+            "require-entitlement",
+            "extension",
+            "vnode-type",
+            "debug-mode",
+            "generic",
+            "raw"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "description": "The path, pattern, or value (for subpath, literal, regex, extension, vnode-type, raw)."
+        },
+        "name": {
+          "type": "string",
+          "description": "The filter or entitlement name (for require-entitlement, generic)."
+        },
+        "filter": {
+          "$ref": "#/$defs/Filter",
+          "description": "The negated inner filter (for require-not)."
+        },
+        "filters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Filter" },
+          "description": "Sub-filters (for require-entitlement)."
+        },
+        "args": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FilterValue" },
+          "description": "Arguments (for generic filters)."
+        }
+      }
+    },
+
+    "FilterValue": {
+      "type": "object",
+      "required": ["type", "value"],
+      "description": "A typed argument value for generic filters.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "regex", "bool", "number", "atom", "compound"]
+        },
+        "value": {
+          "description": "The value: string for string/regex/atom, boolean for bool, number for number, or name for compound.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "boolean" },
+            { "type": "number" }
+          ]
+        },
+        "args": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FilterValue" },
+          "description": "Sub-arguments (for compound values only)."
+        }
+      }
+    }
+  }
+}

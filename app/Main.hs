@@ -3,6 +3,7 @@ module Main where
 import Parser (parseSandboxProfile)
 import PrologEmitter (emitProlog)
 import Analyze
+import JsonEmitter (emitJson)
 import Types (SandboxProfile(..), FlatRule)
 
 import qualified Data.Text.IO as TIO
@@ -15,15 +16,16 @@ data Mode
   = ModeAST
   | ModePrologFacts
   | ModeQuery (Maybe Int)
+  | ModeJson (Maybe Int)
   deriving (Eq, Show)
 
 parseArgs :: [String] -> Either String (Mode, FilePath)
 parseArgs ["--ast", fp]            = Right (ModeAST, fp)
 parseArgs ["--prolog-facts", fp]   = Right (ModePrologFacts, fp)
 parseArgs ["--query", fp]          = Right (ModeQuery Nothing, fp)
-parseArgs ["--query", n, fp]       = case reads n of
-  [(num, "")] | num >= 1 && num <= 4 -> Right (ModeQuery (Just num), fp)
-  _ -> Left $ "Invalid query number: " ++ n ++ " (must be 1-4)"
+parseArgs ["--query", n, fp]       = parseQueryNum ModeQuery n fp
+parseArgs ["--json", fp]           = Right (ModeJson Nothing, fp)
+parseArgs ["--json", n, fp]        = parseQueryNum ModeJson n fp
 parseArgs [fp]                     = Right (ModeQuery Nothing, fp)
 parseArgs _                        = Left usage
   where
@@ -34,8 +36,14 @@ parseArgs _                        = Left usage
       , "  --ast              Print the parsed sandbox profile AST"
       , "  --prolog-facts     Output all flattened allow/deny Prolog facts"
       , "  --query [1-4]      Run analysis queries and print results (default)"
+      , "  --json  [1-4]      Output query results as JSON"
       , "                     Omit number to run all queries"
       ]
+
+parseQueryNum :: (Maybe Int -> Mode) -> String -> FilePath -> Either String (Mode, FilePath)
+parseQueryNum mode n fp = case reads n of
+  [(num, "")] | num >= 1 && num <= 4 -> Right (mode (Just num), fp)
+  _ -> Left $ "Invalid query number: " ++ n ++ " (must be 1-4)"
 
 main :: IO ()
 main = do
@@ -79,3 +87,6 @@ runMode (ModeQuery sel) profile = do
     Just 3 -> q3
     Just 4 -> q4
     _      -> q1 >> q2 >> q3 >> q4
+
+runMode (ModeJson sel) profile =
+  TIO.putStrLn (emitJson sel profile)
