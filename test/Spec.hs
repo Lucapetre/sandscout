@@ -73,10 +73,10 @@ normalise = sort . filter (not . T.null) . map T.stripEnd . T.lines
 
 main :: IO ()
 main = do
-  emitTests <- discoverTestCases "test-cases"
+  emitTests <- discoverTestCases "test/test-cases"
 
-  let sbFile = "test-cases" </> "containerBetterGraphProcess.sb"
-      outDir = "outputFromQueries"
+  let sbFile = "test" </> "test-cases" </> "containerBetterGraphProcess.sb"
+      outDir = "test" </> "outputFromQueries"
 
   q1 <- mkQueryTest "query1" sbFile (outDir </> "query1.out") formatQuery1 runQuery1
   q2 <- mkQueryTest "query2" sbFile (outDir </> "query2.out") formatQuery2 runQuery2
